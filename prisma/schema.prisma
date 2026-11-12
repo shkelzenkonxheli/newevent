@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EventStatus {
+  DRAFT
+  VOTING_OPEN
+  VOTING_CLOSED
+  FINALIZED
+  RSVP_OPEN
+  COMPLETED
+}
+
+model User {
+  id String @id
+  name String
+  email String @unique
+  emailVerified Boolean @default(false)
+  image String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions Session[]
+  accounts Account[]
+  events Event[]
+}
+model Session {
+  id String @id
+  token String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+model Account {
+  id String @id
+  accountId String
+  providerId String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken String?
+  refreshToken String?
+  idToken String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope String?
+  password String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+model Verification {
+  id String @id
+  identifier String
+  value String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([identifier])
+}
+model Event {
+  id String @id @default(cuid())
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  publicToken String @unique
+  title String
+  description String?
+  timezone String @default("Europe/Copenhagen")
+  language String @default("da")
+  status EventStatus @default(DRAFT)
+  votingDeadline DateTime? @db.Timestamptz
+  rsvpDeadline DateTime? @db.Timestamptz
+  retentionUntil DateTime? @db.Timestamptz
+  finalDate String?
+  finalIdea String?
+  finalTime String?
+  location String?
+  instructions String?
+  resultSnapshot Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  dates EventDateProposal[]
+  ideas EventIdeaProposal[]
+  participants Participant[]
+  invitees EventInvitee[]
+  audit AuditLog[]
+  writeLimit PublicWriteLimit?
+  @@index([ownerId, createdAt])
+  @@index([retentionUntil])
+}
+model Participant {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name String
+  normalizedName String
+  tokenHash String? @unique
+  ballot Ballot?
+  rsvp RSVP?
+  @@unique([eventId, normalizedName])
+  @@unique([eventId, id])
+}
+model Ballot {
+  id String @id @default(cuid())
+  eventId String
+  participantId String
+  participant Participant @relation(fields: [eventId, participantId], references: [eventId, id], onDelete: Cascade)
+  dates DateVote[]
+  ideas IdeaVote[]
+  @@unique([eventId, participantId])
+  @@unique([eventId, id])
+}
+model RSVP {
+  id String @id @default(cuid())
+  eventId String
+  participantId String
+  participant Participant @relation(fields: [eventId, participantId], references: [eventId, id], onDelete: Cascade)
+  attending Boolean
+  updatedAt DateTime @updatedAt
+  @@unique([eventId, participantId])
+}
+model EventInvitee {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name String
+  normalizedName String
+  @@unique([eventId, normalizedName])
+}
+model AuditLog {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actorId String
+  action String
+  subjectId String?
+  createdAt DateTime @default(now())
+  @@index([eventId, createdAt])
+}
+model EventDateProposal {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date String
+  votes DateVote[]
+  @@unique([eventId, date])
+  @@unique([eventId, id])
+}
+model DateVote {
+  eventId String
+  ballotId String
+  proposalId String
+  ballot Ballot @relation(fields: [eventId, ballotId], references: [eventId, id], onDelete: Cascade)
+  proposal EventDateProposal @relation(fields: [eventId, proposalId], references: [eventId, id], onDelete: Cascade)
+  @@id([eventId, ballotId, proposalId])
+  @@index([eventId, proposalId])
+}
+model EventIdeaProposal {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  label String
+  normalizedLabel String
+  votes IdeaVote[]
+  @@unique([eventId, normalizedLabel])
+  @@unique([eventId, id])
+}
+model IdeaVote {
+  eventId String
+  ballotId String
+  proposalId String
+  ballot Ballot @relation(fields: [eventId, ballotId], references: [eventId, id], onDelete: Cascade)
+  proposal EventIdeaProposal @relation(fields: [eventId, proposalId], references: [eventId, id], onDelete: Cascade)
+  @@id([eventId, ballotId, proposalId])
+  @@index([eventId, proposalId])
+}
+
+model PublicWriteLimit {
+  key String @id
+  event Event @relation(fields: [key], references: [id], onDelete: Cascade)
+  hits Int
+  resetAt DateTime @db.Timestamptz
+}
+

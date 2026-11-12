@@ -1,0 +1,46 @@
+{
+  "name": "newevent",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src --pool=threads",
+    "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "test:e2e": "playwright test",
+    "seed": "tsx scripts/seed.ts",
+    "retention:preview": "tsx scripts/purge-expired.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7",
+    "@prisma/client": "^7",
+    "better-auth": "^1.7.22",
+    "dotenv": "^17",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "next-intl": "^4.0.0",
+    "pg": "^8",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "resend": "^6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16",
+    "prisma": "^7",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vitest": "^4"
+  }
+}
