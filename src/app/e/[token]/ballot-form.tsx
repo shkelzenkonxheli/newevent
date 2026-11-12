@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { vote } from "./actions";
+import { useState, useTransition, type FormEvent } from "react";
+import { vote, type VoteState } from "./actions";
 
 const copy = {
   da: {name:"Fulde navn", dates:"Datoer", ideas:"Aktiviteter", addDate:"Nye datoer (ÅÅÅÅ-MM-DD, én pr. linje)", addIdea:"Nye idéer (én pr. linje)", token:"Privat kode til at ændre en tidligere stemme", submit:"Gem stemme", saved:"Din stemme er gemt.", keep:"Gem denne private kode, hvis du vil ændre din stemme eller senere svare på invitationen.", duplicate:"Der er allerede en stemme med dette navn.", closed:"Afstemningen er lukket.", invalid:"Vælg eller foreslå mindst én gyldig mulighed.", private:"Den private kode kunne ikke bruges.", limited:"Der er mange forsøg lige nu. Vent et minut.", unexpected:"Stemmen kunne ikke gemmes. Prøv igen."},
@@ -9,10 +9,25 @@ const copy = {
 };
 
 export function BallotForm({token, locale, dates, ideas}: {token:string;locale:"da"|"en";dates:{id:string;date:string}[];ideas:{id:string;label:string}[]}) {
-  const [state, action, pending] = useActionState(vote.bind(null, token), {});
+  const [state, setState] = useState<VoteState>({});
+  const [pending, startTransition] = useTransition();
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    const form = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        setState(await vote(token, {}, form));
+      } catch {
+        setState({code: "unexpected"});
+      }
+    });
+  }
   const t = copy[locale];
   if (state.saved) return <section role="status"><h2>{t.saved}</h2>{state.privateToken && <><p>{t.keep}</p><code className="capability">{state.privateToken}</code></>}</section>;
-  return <form action={action} className="stack">
+  return <form method="post" onSubmit={submit} className="stack" aria-busy={pending}>
     <label>{t.name}<input name="name" autoComplete="name" maxLength={100}/></label>
     <fieldset><legend>{t.dates}</legend>{dates.map(option => <label className="choice" key={option.id}><input type="checkbox" name="date" value={option.id}/> {new Intl.DateTimeFormat(locale, {dateStyle:"long", timeZone:"UTC"}).format(new Date(option.date+"T00:00:00Z"))}</label>)}
       <label>{t.addDate}<textarea name="newDates" maxLength={150}/></label>
@@ -22,7 +37,7 @@ export function BallotForm({token, locale, dates, ideas}: {token:string;locale:"
     </fieldset>
     <label>{t.token}<input name="privateToken" type="password" autoComplete="off" maxLength={43}/></label>
     {state.code && <p role="alert">{t[state.code as keyof typeof t] ?? t.unexpected}</p>}
-    <button disabled={pending}>{t.submit}</button>
+    <button disabled={pending}>{pending ? (locale === "da" ? "Gemmer…" : "Saving…") : t.submit}</button>
   </form>;
 }
 

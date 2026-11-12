@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { allowPublicWrite } from "../../../server/public-limit";
 import { EventError, saveBallot } from "../../../server/ballots";
 
@@ -18,7 +17,6 @@ export async function vote(token: string, _previous: VoteState, form: FormData):
       newDates: lines("newDates"),
       newIdeas: lines("newIdeas"),
     });
-    revalidatePath("/e/" + token);
     return {...result, saved: true};
   } catch (error) {
     return {code: error instanceof EventError ? error.code : "unexpected"};
